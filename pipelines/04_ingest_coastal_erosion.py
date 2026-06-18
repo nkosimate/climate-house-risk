@@ -97,52 +97,29 @@ def standardise_columns(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def assign_erosion_risk(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Derive a standardised erosion_risk column.
-    SMP data typically classifies as:
-        MR  = Managed Retreat
-        NAI = No Active Intervention
-        HTL = Hold The Line
-        ATL = Advance The Line
-
-    We convert this to a numeric risk score for our composite model:
-        MR/NAI = high risk (land will be lost)
-        HTL    = medium risk (defended but still at risk)
-        ATL    = low risk
-        none   = inland, no coastal risk
+    NCERM dataset: nfi2055_95 = predicted erosion in metres by 2055 (95th percentile).
+    Negative values = erosion (land loss). Positive = accretion (land gain).
+    We classify into risk bands for the composite score.
     """
-    cols = gdf.columns.tolist()
+    col = "nfi2055_95"
+    gdf[col] = pd.to_numeric(gdf[col], errors="coerce")
 
-    # Look for policy/management column
-    policy_candidates = [c for c in cols if any(x in c.lower() for x in
-                         ["policy", "manage", "smp", "action"])]
-    log.info(f"  Policy column candidates: {policy_candidates}")
+    log.info(f"  Erosion column '{col}' stats:")
+    log.info(f"    min: {gdf[col].min():.1f}m  max: {gdf[col].max():.1f}m  "
+             f"mean: {gdf[col].mean():.1f}m  nulls: {gdf[col].isna().sum()}")
 
-    # Look for erosion rate column (numeric m/yr)
-    rate_col = next((c for c in cols if any(x in c.lower() for x in
-                     ["rate", "retreat", "loss"])), None)
+    # Classify by predicted erosion (metres lost by 2055)
+    # Negative = erosion, so we flip sign for intuitive bucketing
+    gdf["erosion_metres"] = gdf[col]
+    gdf["erosion_risk"] = pd.cut(
+    gdf[col],
+    bins=[-float("inf"), 0.0, 0.5, 2.0, 10.0, float("inf")],
+    labels=["none", "low", "medium", "high", "critical"]
+)
+    gdf["erosion_risk"] = gdf["erosion_risk"].astype(str).replace("nan", "unknown")
 
-    if rate_col:
-        log.info(f"  Using rate column: {rate_col}")
-        # Classify by erosion rate (metres per year)
-        gdf[rate_col] = pd.to_numeric(gdf[rate_col], errors="coerce")
-        gdf["erosion_risk"] = pd.cut(
-            gdf[rate_col].abs(),
-            bins=[-0.001, 0.1, 0.5, 1.0, float("inf")],
-            labels=["negligible", "low", "medium", "high"]
-        )
-    elif policy_candidates:
-        policy_col = policy_candidates[0]
-        log.info(f"  Using policy column: {policy_col}")
-        policy_map = {
-            "MR": "high", "NAI": "high",
-            "HTL": "medium",
-            "ATL": "low",
-        }
-        gdf["erosion_risk"] = gdf[policy_col].str.strip().str.upper().map(policy_map).fillna("unknown")
-    else:
-        log.warning("Could not identify erosion rate or policy column — setting all to 'unknown'")
-        log.warning("Please check the column output above and update this script accordingly")
-        gdf["erosion_risk"] = "unknown"
+    counts = gdf["erosion_risk"].value_counts()
+    log.info(f"  Erosion risk distribution:\n{counts.to_string()}")
 
     return gdf
 
