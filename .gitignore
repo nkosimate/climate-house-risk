@@ -3,4 +3,5 @@ data/
 venv/
 __pycache__/
 *.pyc
-.DS_Storess
+.DS_Stores
+.DS_Store
