@@ -1,6 +1,6 @@
 # Where Should You Buy a House if Climate Change Continues?
 
-> A scenario modelling tool that scores every Local Authority in the UK on climate attractiveness — combining flood risk, coastal erosion, heat projections, population migration and property price trends into a single index, updated from live open data sources.
+> A scenario modelling tool that scores every Local Authority in the UK on climate attractiveness combining flood risk, coastal erosion, heat projections, population migration and property price trends into a single index, updated from live open data sources.
 
 **Live demo:** https://victorious-field-0cfc98c03.7.azurestaticapps.net
 
@@ -10,7 +10,7 @@
 
 Most house-buying guidance ignores climate risk. This project asks a different question: if RCP8.5 warming continues to 2040, which UK areas become *more* or *less* attractive to live in — before the market has fully priced it in?
 
-It isn't a prediction. It's a scenario model — a structured way to combine five risk factors into a comparable index across 319 Local Authorities, so the relative attractiveness of Hull vs Highland becomes a data question rather than a guess.
+It isn't a prediction. It's a scenario model a structured way to combine five risk factors into a comparable index across 319 Local Authorities, so the relative attractiveness of Hull vs Highland becomes a data question rather than a guess.
 
 ---
 
