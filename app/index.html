@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Where Should You Buy a House? — UK Climate Risk 2040</title>
+
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+  <style>
+    /* ── Tokens ─────────────────────────────────────────── */
+    :root {
+      --c-bg:        #0f1117;
+      --c-surface:   #1a1d27;
+      --c-border:    #2a2d3a;
+      --c-text:      #e8eaf0;
+      --c-muted:     #7a7f94;
+      --c-accent:    #4ade80;   /* climate green */
+
+      /* Score band colours — red→amber→green */
+      --score-e:     #ef4444;
+      --score-d:     #f97316;
+      --score-c:     #eab308;
+      --score-b:     #84cc16;
+      --score-a:     #22c55e;
+
+      --font-display: 'Georgia', serif;
+      --font-body:    system-ui, -apple-system, sans-serif;
+      --font-mono:    'SF Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--c-bg);
+      color: var(--c-text);
+      font-family: var(--font-body);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: var(--c-surface);
+      border-bottom: 1px solid var(--c-border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: normal;
+      letter-spacing: 0.01em;
+      color: var(--c-text);
+    }
+
+    header h1 span {
+      color: var(--c-accent);
+    }
+
+    .header-meta {
+      font-size: 0.72rem;
+      color: var(--c-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Main layout ─────────────────────────────────────── */
+    main {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    #sidebar {
+      background: var(--c-surface);
+      border-right: 1px solid var(--c-border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--c-border);
+    }
+
+    .sidebar-section h2 {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Score bands legend */
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-label { color: var(--c-text); }
+    .legend-range { color: var(--c-muted); font-size: 0.72rem; margin-left: auto; }
+
+    /* Factor breakdown */
+    .factor-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+    }
+
+    .factor-label {
+      width: 110px;
+      color: var(--c-muted);
+      flex-shrink: 0;
+      font-size: 0.75rem;
+    }
+
+    .factor-bar-track {
+      flex: 1;
+      height: 4px;
+      background: var(--c-border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .factor-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--c-accent);
+      transition: width 0.4s ease;
+    }
+
+    .factor-value {
+      width: 36px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--c-text);
+    }
+
+    /* Selected LA panel */
+    #la-panel {
+      padding: 20px;
+      flex: 1;
+    }
+
+    #la-panel .placeholder {
+      color: var(--c-muted);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    #la-name {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+
+    #la-score-display {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    #la-score-number {
+      font-family: var(--font-mono);
+      font-size: 2.4rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    #la-score-band {
+      font-size: 0.78rem;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+
+    #la-factors { margin-top: 16px; }
+
+    #la-factors h3 {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Rankings */
+    .ranking-list {
+      list-style: none;
+    }
+
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--c-border);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .ranking-item:hover { color: var(--c-accent); }
+
+    .ranking-pos {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--c-muted);
+      width: 20px;
+      flex-shrink: 0;
+    }
+
+    .ranking-score {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      margin-left: auto;
+      color: var(--c-muted);
+    }
+
+    .ranking-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--c-border);
+    }
+
+    .tab {
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      color: var(--c-muted);
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+
+    .tab.active {
+      color: var(--c-accent);
+      border-bottom-color: var(--c-accent);
+    }
+
+    .tab-content { display: none; padding: 16px 20px; }
+    .tab-content.active { display: block; }
+
+    /* ── Map ─────────────────────────────────────────────── */
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Mapbox popup */
+    .mapboxgl-popup-content {
+      background: var(--c-surface) !important;
+      color: var(--c-text) !important;
+      border: 1px solid var(--c-border) !important;
+      border-radius: 6px !important;
+      padding: 12px 14px !important;
+      font-family: var(--font-body) !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+      min-width: 160px;
+    }
+
+    .mapboxgl-popup-tip { display: none !important; }
+
+    .popup-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .popup-score {
+      font-family: var(--font-mono);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+
+    .popup-band {
+      font-size: 0.72rem;
+      color: var(--c-muted);
+      margin-top: 2px;
+    }
+
+    /* Loading overlay */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: var(--c-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    #loading p {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--c-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--c-border);
+      border-top-color: var(--c-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Scrollbar */
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Loading climate risk data...</p>
+</div>
+
+<header>
+  <h1>Where should you buy a house if <span>climate change continues?</span></h1>
+  <span class="header-meta">UK · 319 Local Authorities · RCP8.5 scenario · 2040</span>
+</header>
+
+<main>
+  <div id="sidebar">
+
+    <!-- Legend -->
+    <div class="sidebar-section">
+      <h2>Score bands</h2>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--score-a)"></div>
+        <span class="legend-label">A — Very Attractive</span>
+        <span class="legend-range">75–100</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--score-b)"></div>
+        <span class="legend-label">B — Attractive</span>
+        <span class="legend-range">60–75</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--score-c)"></div>
+        <span class="legend-label">C — Average</span>
+        <span class="legend-range">45–60</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--score-d)"></div>
+        <span class="legend-label">D — At Risk</span>
+        <span class="legend-range">30–45</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--score-e)"></div>
+        <span class="legend-label">E — High Risk</span>
+        <span class="legend-range">0–30</span>
+      </div>
+    </div>
+
+    <!-- Selected LA detail -->
+    <div id="la-panel">
+      <p class="placeholder">Click any area on the map to see its climate risk breakdown.</p>
+    </div>
+
+    <!-- Rankings tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('top')">Top 10</button>
+      <button class="tab" onclick="showTab('bottom')">Bottom 10</button>
+    </div>
+    <div id="tab-top" class="tab-content active">
+      <ul class="ranking-list" id="list-top"></ul>
+    </div>
+    <div id="tab-bottom" class="tab-content">
+      <ul class="ranking-list" id="list-bottom"></ul>
+    </div>
+
+  </div>
+
+  <div id="map"></div>
+</main>
+
+<script>
+  // ── Config ────────────────────────────────────────────────
+  // Replace with your Mapbox public token from mapbox.com (free account)
+  mapboxgl.accessToken = 'MAPBOX_TOKEN_PLACEHOLDER';
+
+  const GEOJSON_URL = 'https://climatehousestorage.blob.core.windows.net/data/gold/la_scores.geojson';
+
+  // ── Score → colour ─────────────────────────────────────────
+  function scoreColour(score) {
+    if (score >= 75) return '#22c55e';
+    if (score >= 60) return '#84cc16';
+    if (score >= 45) return '#eab308';
+    if (score >= 30) return '#f97316';
+    return '#ef4444';
+  }
+
+  function bandColour(band) {
+    if (band.startsWith('A')) return '#22c55e';
+    if (band.startsWith('B')) return '#84cc16';
+    if (band.startsWith('C')) return '#eab308';
+    if (band.startsWith('D')) return '#f97316';
+    return '#ef4444';
+  }
+
+  // ── Tab switching ──────────────────────────────────────────
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // ── Render selected LA ─────────────────────────────────────
+  function showLA(props) {
+    const panel = document.getElementById('la-panel');
+    const score = props.climate_score ? props.climate_score.toFixed(1) : 'N/A';
+    const band  = props.score_band || '—';
+    const colour = bandColour(band);
+
+    const factors = [
+      { label: 'Flood safety',   value: props.flood_score },
+      { label: 'Erosion safety', value: props.erosion_score },
+      { label: 'Migration',      value: props.migration_score },
+      { label: 'Price trend',    value: props.price_score },
+    ];
+
+    const factorHTML = factors.map(f => {
+      const pct = f.value != null ? (f.value * 100).toFixed(0) : 50;
+      return `
+        <div class="factor-row">
+          <span class="factor-label">${f.label}</span>
+          <div class="factor-bar-track">
+            <div class="factor-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="factor-value">${pct}</span>
+        </div>`;
+    }).join('');
+
+    const nameCol = Object.keys(props).find(k => k.endsWith('NM') && !k.endsWith('NMW')) || 'LAD23NM';
+    const laName = props[nameCol] || props.LAD23NM || 'Unknown';
+
+    panel.innerHTML = `
+      <div id="la-name">${laName}</div>
+      <div id="la-score-display">
+        <span id="la-score-number" style="color:${colour}">${score}</span>
+        <span id="la-score-band" style="background:${colour}22;color:${colour}">${band}</span>
+      </div>
+      <div id="la-factors">
+        <h3>Factor breakdown</h3>
+        ${factorHTML}
+      </div>
+    `;
+  }
+
+  // ── Rankings ───────────────────────────────────────────────
+  function buildRankings(features) {
+    const nameCol = Object.keys(features[0].properties)
+      .find(k => k.endsWith('NM') && !k.endsWith('NMW')) || 'LAD23NM';
+
+    const sorted = [...features]
+      .filter(f => f.properties.climate_score != null)
+      .sort((a, b) => b.properties.climate_score - a.properties.climate_score);
+
+    function renderList(items, elId) {
+      const el = document.getElementById(elId);
+      el.innerHTML = items.map((f, i) => {
+        const p = f.properties;
+        const colour = scoreColour(p.climate_score);
+        return `
+          <li class="ranking-item" onclick="flyToLA('${p.LAD23CD}')">
+            <span class="ranking-pos">${String(i+1).padStart(2,'0')}</span>
+            <span class="ranking-dot" style="background:${colour}"></span>
+            <span>${p[nameCol]}</span>
+            <span class="ranking-score">${p.climate_score.toFixed(1)}</span>
+          </li>`;
+      }).join('');
+    }
+
+    renderList(sorted.slice(0, 10), 'list-top');
+    renderList(sorted.slice(-10).reverse(), 'list-bottom');
+  }
+
+  // ── Fly to LA ──────────────────────────────────────────────
+  let geojsonData = null;
+
+  function flyToLA(laCode) {
+    if (!geojsonData) return;
+    const feature = geojsonData.features.find(f => f.properties.LAD23CD === laCode);
+    if (!feature) return;
+
+    // Safely extract all coordinate pairs from any geometry type
+    function extractCoords(geom) {
+      if (geom.type === 'Polygon') return geom.coordinates.flat(1);
+      if (geom.type === 'MultiPolygon') return geom.coordinates.flat(2);
+      return [];
+    }
+
+    const coords = extractCoords(feature.geometry);
+    if (!coords.length) return;
+
+    const lons = coords.map(c => c[0]);
+    const lats = coords.map(c => c[1]);
+    const lon  = lons.reduce((a, b) => a + b, 0) / lons.length;
+    const lat  = lats.reduce((a, b) => a + b, 0) / lats.length;
+
+    map.flyTo({ center: [lon, lat], zoom: 8, duration: 800 });
+    showLA(feature.properties);
+  }
+
+  // ── Map init ───────────────────────────────────────────────
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/dark-v11',
+    center: [-2.5, 54.0],
+    zoom: 5.5,
+    minZoom: 4,
+    maxZoom: 12,
+  });
+
+  map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+  map.on('load', async () => {
+    // Fetch GeoJSON
+    const res  = await fetch(GEOJSON_URL);
+    const data = await res.json();
+    geojsonData = data;
+
+    // Add source
+    map.addSource('la-scores', { type: 'geojson', data });
+
+    // Choropleth fill
+    map.addLayer({
+      id: 'la-fill',
+      type: 'fill',
+      source: 'la-scores',
+      paint: {
+        'fill-color': [
+          'interpolate', ['linear'],
+          ['coalesce', ['get', 'climate_score'], 50],
+          0,   '#ef4444',
+          30,  '#f97316',
+          45,  '#eab308',
+          60,  '#84cc16',
+          75,  '#22c55e',
+          100, '#16a34a',
+        ],
+        'fill-opacity': 0.75,
+      }
+    });
+
+    // Border
+    map.addLayer({
+      id: 'la-border',
+      type: 'line',
+      source: 'la-scores',
+      paint: {
+        'line-color': '#0f1117',
+        'line-width': 0.5,
+        'line-opacity': 0.8,
+      }
+    });
+
+    // Hover highlight
+    map.addLayer({
+      id: 'la-hover',
+      type: 'fill',
+      source: 'la-scores',
+      paint: {
+        'fill-color': '#ffffff',
+        'fill-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'hover'], false],
+          0.15,
+          0
+        ]
+      }
+    });
+
+    buildRankings(data.features);
+    document.getElementById('loading').style.display = 'none';
+
+   
+    // Hover state — use index as id since GeoJSON has no id field
+    let hoveredId = null;
+
+    map.on('mousemove', 'la-fill', (e) => {
+      map.getCanvas().style.cursor = 'pointer';
+      if (e.features.length > 0) {
+        if (hoveredId !== null) {
+          map.setFeatureState({ source: 'la-scores', id: hoveredId }, { hover: false });
+        }
+        hoveredId = e.features[0]._vectorTileFeature?._index ?? null;
+        if (hoveredId !== null) {
+          map.setFeatureState({ source: 'la-scores', id: hoveredId }, { hover: true });
+        }
+      }
+    });
+
+    map.on('mouseleave', 'la-fill', () => {
+      map.getCanvas().style.cursor = '';
+      if (hoveredId !== null) {
+        map.setFeatureState({ source: 'la-scores', id: hoveredId }, { hover: false });
+      }
+      hoveredId = null;
+    });
+
+    // Click → show panel
+    map.on('click', 'la-fill', (e) => {
+      if (e.features.length > 0) {
+        showLA(e.features[0].properties);
+      }
+    });
+  });
+</script>
+</body>
+</html>
