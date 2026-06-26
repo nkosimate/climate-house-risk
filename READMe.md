@@ -22,3 +22,5 @@ coastal erosion, heat projections and population migration.
 4. Scoring (composite risk model)
 5. Serving (Azure Maps + Static Web App)
 
+## Live Demo
+https://victorious-field-0cfc98c03.7.azurestaticapps.net
