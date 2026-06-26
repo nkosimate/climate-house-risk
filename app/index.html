@@ -8,6 +8,8 @@
   <!-- Mapbox GL JS -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <!-- Load token from config.js (gitignored) -->
+<script src="config.js"></script>
 
   <style>
     /* ── Tokens ─────────────────────────────────────────── */
@@ -428,7 +430,7 @@
 <script>
   // ── Config ────────────────────────────────────────────────
   // Replace with your Mapbox public token from mapbox.com (free account)
-  mapboxgl.accessToken = 'MAPBOX_TOKEN_PLACEHOLDER';
+  mapboxgl.accessToken = 'pk.eyJ1Ijoibmtvc2ltYXRlIiwiYSI6ImNtcXZqYnFodzAya2sycXNlcmVqOG0yODEifQ.AkyauH25UryQmS9HdqapSQ';
 
   const GEOJSON_URL = 'https://climatehousestorage.blob.core.windows.net/data/gold/la_scores.geojson';
 
